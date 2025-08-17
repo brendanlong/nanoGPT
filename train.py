@@ -133,6 +133,8 @@ def get_batch(split):
 # init these up here, can override if init_from='resume' (i.e. from a checkpoint)
 iter_num = 0
 best_val_loss = 1e9
+val_loss_increases = 0  # counter for validation loss increases
+early_stop = False  # flag to enable early stopping after 2 consecutive increases
 
 # attempt to derive vocab_size from the dataset
 meta_path = os.path.join(data_dir, 'meta.pkl')
@@ -271,6 +273,17 @@ while True:
                 "lr": lr,
                 "mfu": running_mfu*100, # convert to percentage
             })
+        
+        # Check for early stopping based on validation loss
+        if losses['val'] > best_val_loss:
+            val_loss_increases += 1
+            print(f"Validation loss increased ({val_loss_increases}/2 before early stopping)")
+            if val_loss_increases >= 2:
+                print(f"Early stopping triggered: validation loss increased {val_loss_increases} times")
+                early_stop = True
+        else:
+            val_loss_increases = 0  # reset counter if validation improves
+        
         if losses['val'] < best_val_loss or always_save_checkpoint:
             best_val_loss = losses['val']
             if iter_num > 0:
@@ -330,6 +343,9 @@ while True:
 
     # termination conditions
     if iter_num > max_iters:
+        break
+    if early_stop:
+        print(f"Stopping training at iteration {iter_num} due to early stopping")
         break
 
 if ddp:
