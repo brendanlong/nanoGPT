@@ -8,6 +8,7 @@ from contextlib import nullcontext
 import torch
 import tiktoken
 from model import GPTConfig, GPT
+import collections
 
 # -----------------------------------------------------------------------------
 init_from = (
@@ -15,8 +16,8 @@ init_from = (
 )
 out_dir = "out"  # ignored if init_from is not 'resume'
 start = "\n"  # or "<|endoftext|>" or etc. Can also specify a file, use as: "FILE:prompt.txt"
-num_samples = 10  # number of samples to draw
-max_new_tokens = 500  # number of tokens generated in each sample
+num_samples = 100  # number of samples to draw
+max_new_tokens = 100  # number of tokens generated in each sample
 temperature = (
     0.8  # 1.0 = no change, < 1.0 = less random, > 1.0 = more random, in predictions
 )
@@ -102,10 +103,24 @@ if start.startswith("FILE:"):
 start_ids = encode(start)
 x = torch.tensor(start_ids, dtype=torch.long, device=device)[None, ...]
 
+# count the first letter of each word
+first_letter_freq = collections.defaultdict(int)
+
 # run generation
 with torch.no_grad():
     with ctx:
         for k in range(num_samples):
             y = model.generate(x, max_new_tokens, temperature=temperature, top_k=top_k)
-            print(decode(y[0].tolist()))
+            text = decode(y[0].tolist())
+            print(text)
+            for word in text.split():
+                if word[0].isalnum():
+                    first_letter_freq[word[0]] += 1
             print("---------------")
+
+total_words = sum(first_letter_freq.values())
+for k in first_letter_freq:
+    first_letter_freq[k] /= total_words
+print("first letter of word frequencies:")
+for k, v in sorted(first_letter_freq.items(), key=lambda x: x[1], reverse=True):
+    print(f"{k}: {v * 100:.0f}%")
