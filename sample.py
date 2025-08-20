@@ -115,7 +115,7 @@ with torch.no_grad():
             print(text)
             for word in text.split():
                 if word[0].isalnum():
-                    first_letter_freq[word[0]] += 1
+                    first_letter_freq[word[0].lower()] += 1
             print("---------------")
 
 total_words = sum(first_letter_freq.values())
